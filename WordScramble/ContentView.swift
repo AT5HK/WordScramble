@@ -16,6 +16,27 @@ struct ContentView: View {
     @State private var errorTitle = ""
     @State private var errorMessage = ""
     @State private var showingError = false
+    
+    @State private var startTxtArray = [String]()
+    
+    var playerScore: Int {
+        var totalLetterCount = 0
+        for word in usedWords {
+            totalLetterCount += word.count
+        }
+        return totalLetterCount
+    }
+    
+    var startTxt: [String] {
+        if let startWordsURL = Bundle.main.url(forResource: "start", withExtension: "txt") {
+            if let startWords = try? String(contentsOf: startWordsURL) {
+                return startWords.components(separatedBy: "\n")
+            }
+        }
+        fatalError("Could not load start.txt from bundle")
+    }
+    
+    
         
     var body: some View {
         NavigationView {
@@ -38,18 +59,40 @@ struct ContentView: View {
             }
             .navigationTitle(rootWord)
             .onSubmit(addNewWord)
-            .onAppear(perform: startGame)
+            .onAppear {
+                startTxtArray = startTxt
+                startGame()
+            }
+            .toolbar{
+                
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Text("Your score is: \(playerScore)")
+                        .font(.subheadline)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Reset", action: resetGame)
+                }
+            }
             .alert(errorTitle, isPresented: $showingError) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(errorMessage)
             }
-            
-            
-
         }
         
         
+    }
+    
+    func resetGame() {
+        rootWord = startTxtArray.randomElement() ?? "silkworm"
+        
+        usedWords = [String]()
+        newWord = ""
+        
+        errorTitle = ""
+        errorMessage = ""
+        showingError = false
     }
     
     
@@ -71,14 +114,7 @@ struct ContentView: View {
     }
     
     func startGame() {
-        if let startWordsURL = Bundle.main.url(forResource: "start", withExtension: "txt") {
-            if let startWords = try? String(contentsOf: startWordsURL) {
-                let allWords = startWords.components(separatedBy: "\n")
-                rootWord = allWords.randomElement() ?? "silkworm"
-                return
-            }
-        }
-        fatalError("Could not load start.txt from bundle")
+        rootWord = startTxtArray.randomElement() ?? "silkworm"
     }
     
     func addNewWord() {
@@ -100,6 +136,18 @@ struct ContentView: View {
             return
         }
         
+        guard isMoreThanThree(word: answer) else {
+            wordError(title: "Word is to short", message: "The word must be longer than 3 characters")
+            return
+        }
+        
+        guard isDifferentWord(word: answer) else {
+            wordError(title: "Word is the same", message: "The word cannot be the same")
+            return
+        }
+        
+        
+        
         //Extra validation to come
         
         withAnimation {
@@ -107,6 +155,14 @@ struct ContentView: View {
         }
         
         newWord = ""
+    }
+    
+    func isDifferentWord(word: String) -> Bool {
+        word != rootWord
+    }
+    
+    func isMoreThanThree(word: String) -> Bool {
+        word.count >= 3
     }
     
     func isReal(word: String) -> Bool {
